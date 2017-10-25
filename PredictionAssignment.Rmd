@@ -1,0 +1,96 @@
+
+**Prediction Assignment Writeup**
+========================================
+
+## **Instructions**
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+## **Review Criteria**
+### What you should submit
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+##### **Load libraries**
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+library(gbm)
+library(plyr)
+```
+
+##### **Load data**
+Data is removed that contains "NA" and undefined values.
+```{r}
+test <- read.csv("./pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+train <- read.csv("./pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+ft <- names(test[,colSums(is.na(test)) == 0])[8:59]
+train <- train[,c(ft,"classe")]
+test <- test[,c(ft,"problem_id")]
+dim(train) 
+dim(test)
+```
+
+##### **Partition data**
+The data is split into 70% for our training dataset and 30% for our testing dataset
+```{r}
+set.seed(1000)
+inTrain <- createDataPartition(train$classe, p=0.7, list=FALSE)
+train_data <- train[inTrain,]
+test_data <- train[-inTrain,]
+dim(train_data)
+dim(test_data)
+```
+
+
+##### **Decision Tree Model**
+```{r}
+set.seed(1000)
+dt_model <- rpart(classe ~ ., data = train_data, method="class", control = rpart.control(method = "cv", number = 10))
+dt <- fancyRpartPlot(dt_model)
+dt
+```
+
+
+##### **Predicting with Decision Tree Model**
+```{r}
+set.seed(1000)
+prediction <- predict(dt_model, test_data, type = "class")
+confusionMatrix(prediction, test_data$classe)
+```
+
+
+##### **Random Forest Model**
+```{r}
+set.seed(1000)
+rf_model <- randomForest(classe ~ ., data = train_data, method = "rf", importance = T, 
+                         trControl = trainControl(method = "cv", classProbs=TRUE,savePredictions=TRUE,allowParallel=TRUE, 
+                                                  number = 10))
+plot(rf_model)
+```
+
+
+##### **Predicting with Random Forest Model**
+```{r}
+prediction <- predict(rf_model, test_data, type = "class")
+confusionMatrix(prediction, test_data$classe)
+```
+
+
+##### **Decision Tree Model Prediction with Test Data** 
+```{r}
+predictionDT <- predict(dt_model, test)
+predictionDT
+```
+
+
+##### **Random Forest Model Prediction with Test Data**
+```{r}
+predictionRF <- predict(rf_model, test)
+predictionRF
+```
+
+
+
